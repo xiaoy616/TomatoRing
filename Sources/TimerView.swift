@@ -157,7 +157,7 @@ struct TimerView: View {
 
             VStack(spacing: 4) {
                 if engine.isCountUp && engine.countUpHours >= 1 {
-                    Text("\(engine.countUpHours)")
+                    Text("\(min(engine.countUpHours, 10))")
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundStyle(.white)
                         .frame(width: 20, height: 20)

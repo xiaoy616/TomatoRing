@@ -6,7 +6,7 @@ enum RingImage {
     static let size: CGFloat = 20
     static let lineWidth: CGFloat = 3.0
 
-    static func make(progress: Double, color: NSColor, trackColor: NSColor? = nil, size: CGFloat = RingImage.size, lineWidth: CGFloat = RingImage.lineWidth) -> NSImage {
+    static func make(progress: Double, color: NSColor, hours: Int = 0, trackColor: NSColor? = nil, size: CGFloat = RingImage.size, lineWidth: CGFloat = RingImage.lineWidth) -> NSImage {
         let canvas = NSSize(width: size, height: size)
         let image = NSImage(size: canvas, flipped: false) { rect in
             let center = NSPoint(x: rect.midX, y: rect.midY)
@@ -32,6 +32,23 @@ enum RingImage {
                 arc.lineCapStyle = .round
                 color.setStroke()
                 arc.stroke()
+            }
+
+            if hours >= 1 {
+                let text = "\(min(hours, 10))"
+                let fontSize = text.count > 1 ? size * 0.44 : size * 0.56
+                let attributed = NSAttributedString(
+                    string: text,
+                    attributes: [
+                        .font: NSFont.systemFont(ofSize: fontSize, weight: .semibold),
+                        .foregroundColor: color,
+                    ]
+                )
+                let textSize = attributed.size()
+                attributed.draw(at: NSPoint(
+                    x: rect.midX - textSize.width / 2,
+                    y: rect.midY - textSize.height / 2
+                ))
             }
             return true
         }

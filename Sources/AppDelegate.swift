@@ -129,6 +129,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             button.image = RingImage.make(
                 progress: engine.progress,
                 color: tint,
+                hours: engine.countUpHours,
                 trackColor: tint.withAlphaComponent(engine.paused ? 0.45 : 0.28)
             )
         }
