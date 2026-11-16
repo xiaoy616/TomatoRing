@@ -31,6 +31,10 @@ final class Settings: ObservableObject {
     @Published var stopAfterRest: Bool = true {
         didSet { defaults.set(stopAfterRest, forKey: "stopAfterRest") }
     }
+    /// 计时方式：false = 倒计时（番茄钟），true = 正计时（自由计时）
+    @Published var countUpMode: Bool = false {
+        didSet { defaults.set(countUpMode, forKey: "countUpMode") }
+    }
     @Published var notificationsEnabled: Bool = true {
         didSet { defaults.set(notificationsEnabled, forKey: "notificationsEnabled") }
     }
@@ -45,6 +49,7 @@ final class Settings: ObservableObject {
         soundEnabled = d.object(forKey: "soundEnabled") as? Bool ?? true
         stopAfterRest = d.object(forKey: "stopAfterRest") as? Bool ?? true
         notificationsEnabled = d.object(forKey: "notificationsEnabled") as? Bool ?? true
+        countUpMode = d.object(forKey: "countUpMode") as? Bool ?? false
         isLoading = false
     }
 

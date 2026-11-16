@@ -15,9 +15,14 @@ struct TimerView: View {
     @ObservedObject private var stats = StatsStore.shared
     @StateObject private var abandonConfirm = TwoStepConfirm()
 
+    private var countUpActive: Bool { settings.countUpMode && engine.isActive }
+
     var body: some View {
         VStack(spacing: 0) {
-            Spacer(minLength: 8)
+            modeSwitch
+                .padding(.top, 12)
+
+            Spacer(minLength: 6)
 
             ring
 
@@ -44,13 +49,15 @@ struct TimerView: View {
                 .buttonStyle(.plain)
 
                 Button {
-                    if engine.phase.isRest {
+                    if countUpActive {
+                        engine.finishCountUp()
+                    } else if engine.phase.isRest {
                         engine.skip()
                     } else {
                         abandonConfirm.trigger { engine.skip() }
                     }
                 } label: {
-                    Text(engine.phase.isRest ? "跳过休息" : (abandonConfirm.pending ? "确认放弃" : "放弃"))
+                    Text(secondaryTitle)
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(abandonConfirm.pending ? Color.white : (engine.isActive ? Color.primary : Color.secondary))
                         .frame(width: 92)
@@ -80,6 +87,54 @@ struct TimerView: View {
             .padding(.bottom, 14)
         }
     }
+
+    // MARK: - 计时方式
+
+    private var modeSwitch: some View {
+        HStack(spacing: 2) {
+            modeButton("倒计时", countUp: false)
+            modeButton("正计时", countUp: true)
+        }
+        .padding(2)
+        .background(Capsule().fill(Color.primary.opacity(0.06)))
+    }
+
+    private func modeButton(_ title: String, countUp: Bool) -> some View {
+        let selected = settings.countUpMode == countUp
+        return Button {
+            switchMode(to: countUp)
+        } label: {
+            Text(title)
+                .font(.system(size: 11, weight: selected ? .semibold : .regular))
+                .foregroundStyle(selected ? Color.primary : Color.secondary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule().fill(selected ? Color(nsColor: .windowBackgroundColor) : Color.clear)
+                )
+                .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func switchMode(to countUp: Bool) {
+        guard settings.countUpMode != countUp else { return }
+        if engine.isActive {
+            guard Confirm.ask(title: "切换计时方式？", message: "当前计时会被放弃。", confirmTitle: "切换") else {
+                return
+            }
+            engine.reset()
+        }
+        settings.countUpMode = countUp
+    }
+
+    private var secondaryTitle: String {
+        if countUpActive { return "结束" }
+        if engine.phase.isRest { return "跳过休息" }
+        return abandonConfirm.pending ? "确认放弃" : "放弃"
+    }
+
+    // MARK: - 圆环
 
     private var ringColor: Color {
         if engine.paused { return .ringYellow }

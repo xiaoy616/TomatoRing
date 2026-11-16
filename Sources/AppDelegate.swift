@@ -171,7 +171,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         let anchor = makeAnchorWindow(for: button)
         if let anchorView = anchor?.contentView {
             popover.show(relativeTo: anchorView.bounds, of: anchorView, preferredEdge: .minY)
-        } else {
+        }
+        if !popover.isShown {
+            // 锚点窗口异常时退回按钮本身，保证面板一定能出来
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         }
         popover.contentViewController?.view.window?.makeKey()

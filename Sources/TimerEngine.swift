@@ -40,11 +40,15 @@ final class TimerEngine: ObservableObject {
     /// 0…1，已过去的比例（圆环填充量）
     var progress: Double {
         guard total > 0 else { return 0 }
+        if isCountUp {
+            return min(max(remaining / total, 0), 1)
+        }
         return min(max(1 - remaining / total, 0), 1)
     }
 
     var isActive: Bool { phase != .idle }
     var isRunning: Bool { isActive && !paused }
+    var isCountUp: Bool { settings.countUpMode }
     var timeText: String { formatDuration(remaining) }
 
     /// 每次 tick 或状态变化后通知外部刷新菜单栏
@@ -54,6 +58,8 @@ final class TimerEngine: ObservableObject {
     private let stats = StatsStore.shared
     private var endsAt: Date?
     private var timer: DispatchSourceTimer?
+    private var countUpStart: Date?
+    private var countUpAccumulated: Double = 0
 
     private init() {}
 
@@ -62,9 +68,14 @@ final class TimerEngine: ObservableObject {
     func toggle() {
         Notifier.shared.requestAuthorizationIfNeeded()
         switch phase {
-        case .idle: startWork()
+        case .idle:
+            if isCountUp { startCountUp() } else { startWork() }
         default:
-            if paused { resume() } else { pause() }
+            if isCountUp {
+                paused ? resumeCountUp() : pauseCountUp()
+            } else {
+                paused ? resume() : pause()
+            }
         }
     }
 
@@ -91,6 +102,54 @@ final class TimerEngine: ObservableObject {
         begin(seconds: Double(max(1, settings.workMinutes)) * 60)
     }
 
+    // MARK: - 正计时
+
+    private func startCountUp() {
+        phase = .work
+        total = Double(max(1, settings.workMinutes)) * 60
+        countUpAccumulated = 0
+        countUpStart = Date()
+        remaining = 0
+        paused = false
+        startTimer()
+        notifyUpdate()
+    }
+
+    private var countUpElapsed: Double {
+        countUpAccumulated + (countUpStart.map { Date().timeIntervalSince($0) } ?? 0)
+    }
+
+    private func pauseCountUp() {
+        countUpAccumulated = countUpElapsed
+        countUpStart = nil
+        paused = true
+        remaining = countUpAccumulated
+        stopTimer()
+        notifyUpdate()
+    }
+
+    private func resumeCountUp() {
+        countUpStart = Date()
+        paused = false
+        startTimer()
+        notifyUpdate()
+    }
+
+    /// 结束正计时并记入统计
+    func finishCountUp() {
+        guard isCountUp, isActive else { return }
+        let elapsed = countUpElapsed
+        stopTimer()
+        remaining = elapsed
+        let minutes = Int((elapsed / 60).rounded())
+        if minutes >= 1 {
+            stats.addCountUp(minutes: minutes)
+            Notifier.shared.post(title: "正计时结束", body: "已专注 \(minutes) 分钟")
+        }
+        Sound.play()
+        abandon()
+    }
+
     private func startRest() {
         let useLong = completedInSet >= max(2, settings.longRestEvery)
         phase = useLong ? .longRest : .shortRest
@@ -113,6 +172,8 @@ final class TimerEngine: ObservableObject {
         remaining = 0
         total = 0
         endsAt = nil
+        countUpStart = nil
+        countUpAccumulated = 0
         completedInSet = 0
         notifyUpdate()
     }
@@ -164,6 +225,12 @@ final class TimerEngine: ObservableObject {
     }
 
     private func tick() {
+        if isCountUp {
+            guard phase == .work, countUpStart != nil else { return }
+            remaining = countUpElapsed
+            notifyUpdate()
+            return
+        }
         guard endsAt != nil else { return }
         remaining = liveRemaining
         if remaining <= 0 {
@@ -216,11 +283,15 @@ final class TimerEngine: ObservableObject {
 
     var phaseLabel: String {
         if paused { return "暂停" }
+        if isCountUp && phase == .work { return "正计时" }
         return phase.title
     }
 
     var sessionText: String {
-        "\(min(completedInSet + (phase == .work ? 1 : 0), max(2, settings.longRestEvery))) / \(max(2, settings.longRestEvery))"
+        if isCountUp {
+            return "目标 \(settings.workMinutes) 分钟"
+        }
+        return "\(min(completedInSet + (phase == .work ? 1 : 0), max(2, settings.longRestEvery))) / \(max(2, settings.longRestEvery))"
     }
 
     var primaryActionTitle: String {

@@ -49,6 +49,8 @@ struct StatsView: View {
                     Divider().padding(.vertical, 6)
                     totalRow(title: "累计专注", value: formatMinutes(store.totalFocusMinutes))
                     Divider().padding(.vertical, 6)
+                    totalRow(title: "正计时", value: "\(store.totalCountUpSessions) 次 · \(formatMinutes(store.totalCountUpMinutes))")
+                    Divider().padding(.vertical, 6)
                     totalRow(title: "记录天数", value: "\(store.activeDays) 天")
                 }
                 .padding(12)

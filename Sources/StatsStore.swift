@@ -5,6 +5,24 @@ struct DayStat: Codable {
     var pomodoros: Int = 0
     var focusMinutes: Int = 0
     var rests: Int = 0
+    var countUpSessions: Int = 0
+    var countUpMinutes: Int = 0
+
+    init() {}
+
+    enum CodingKeys: String, CodingKey {
+        case pomodoros, focusMinutes, rests, countUpSessions, countUpMinutes
+    }
+
+    /// 老版本的数据文件没有正计时字段，缺省补 0
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        pomodoros = try container.decodeIfPresent(Int.self, forKey: .pomodoros) ?? 0
+        focusMinutes = try container.decodeIfPresent(Int.self, forKey: .focusMinutes) ?? 0
+        rests = try container.decodeIfPresent(Int.self, forKey: .rests) ?? 0
+        countUpSessions = try container.decodeIfPresent(Int.self, forKey: .countUpSessions) ?? 0
+        countUpMinutes = try container.decodeIfPresent(Int.self, forKey: .countUpMinutes) ?? 0
+    }
 }
 
 struct DayEntry: Identifiable {
@@ -43,6 +61,8 @@ final class StatsStore: ObservableObject {
     var today: DayStat { days[key(for: Date())] ?? DayStat() }
 
     var totalPomodoros: Int { days.values.reduce(0) { $0 + $1.pomodoros } }
+    var totalCountUpSessions: Int { days.values.reduce(0) { $0 + $1.countUpSessions } }
+    var totalCountUpMinutes: Int { days.values.reduce(0) { $0 + $1.countUpMinutes } }
     var totalFocusMinutes: Int { days.values.reduce(0) { $0 + $1.focusMinutes } }
     var activeDays: Int { days.values.filter { $0.pomodoros > 0 }.count }
 
@@ -62,6 +82,15 @@ final class StatsStore: ObservableObject {
     func addPomodoro(minutes: Int) {
         mutate { stat in
             stat.pomodoros += 1
+            stat.focusMinutes += max(0, minutes)
+        }
+    }
+
+    /// 正计时结束：计入专注分钟，同时单独累计次数
+    func addCountUp(minutes: Int) {
+        mutate { stat in
+            stat.countUpSessions += 1
+            stat.countUpMinutes += max(0, minutes)
             stat.focusMinutes += max(0, minutes)
         }
     }
