@@ -156,6 +156,15 @@ struct TimerView: View {
                 .animation(.linear(duration: 0.2), value: engine.progress)
 
             VStack(spacing: 4) {
+                if engine.isCountUp && engine.countUpHours >= 1 {
+                    Text("\(engine.countUpHours)")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.white)
+                        .frame(width: 20, height: 20)
+                        .background(Circle().fill(Color.ringGreen))
+                        .padding(.bottom, 2)
+                }
+
                 Text(engine.timeText)
                     .font(.system(size: 40, weight: .medium, design: .rounded))
                     .monospacedDigit()

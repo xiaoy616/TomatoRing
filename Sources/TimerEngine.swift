@@ -41,7 +41,8 @@ final class TimerEngine: ObservableObject {
     var progress: Double {
         guard total > 0 else { return 0 }
         if isCountUp {
-            return min(max(remaining / total, 0), 1)
+            let lapElapsed = remaining.truncatingRemainder(dividingBy: countUpLapSeconds)
+            return min(max(lapElapsed / countUpLapSeconds, 0), 1)
         }
         return min(max(1 - remaining / total, 0), 1)
     }
@@ -60,6 +61,8 @@ final class TimerEngine: ObservableObject {
     private var timer: DispatchSourceTimer?
     private var countUpStart: Date?
     private var countUpAccumulated: Double = 0
+    /// 正计时一圈的长度：一小时
+    private let countUpLapSeconds: Double = 3600
 
     private init() {}
 
@@ -106,7 +109,7 @@ final class TimerEngine: ObservableObject {
 
     private func startCountUp() {
         phase = .work
-        total = Double(max(1, settings.workMinutes)) * 60
+        total = countUpLapSeconds
         countUpAccumulated = 0
         countUpStart = Date()
         remaining = 0
@@ -287,9 +290,15 @@ final class TimerEngine: ObservableObject {
         return phase.title
     }
 
+    /// 正计时已完成的整小时数（第几圈之后）
+    var countUpHours: Int {
+        guard isCountUp else { return 0 }
+        return max(0, Int(remaining / countUpLapSeconds))
+    }
+
     var sessionText: String {
         if isCountUp {
-            return "目标 \(settings.workMinutes) 分钟"
+            return "每小时一圈"
         }
         return "\(min(completedInSet + (phase == .work ? 1 : 0), max(2, settings.longRestEvery))) / \(max(2, settings.longRestEvery))"
     }
